@@ -28,6 +28,9 @@ export const metadata: Metadata = {
   icons: {
     icon: "/favicon.ico",
   },
+  verification: {
+    google: "16rXjwyBkAYfPRI89bm4PXafKYbai-naKjMI1txQUFs",
+  },
 };
 
 export default function RootLayout({
@@ -49,7 +52,7 @@ export default function RootLayout({
               "@type": "WebSite",
               "name": "NDMU Systems Status",
               "description": "Unofficial uptime monitor for Notre Dame of Marbel University web systems.",
-              "url": "https://ndmu-status.vercel.app", 
+              "url": "https://ndmu-status.vercel.app",
             }),
           }}
         />
