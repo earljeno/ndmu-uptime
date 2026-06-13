@@ -41,9 +41,9 @@ function UptimeBar({ history }: { history: (Status | null)[] }) {
               borderRadius: "2px",
               backgroundColor:
                 s === "online" ? "var(--green)" :
-                s === "degraded" ? "var(--yellow)" :
-                s === "offline" ? "var(--red)" :
-                "var(--border-bright)",
+                  s === "degraded" ? "var(--yellow)" :
+                    s === "offline" ? "var(--red)" :
+                      "var(--border-bright)",
               opacity: s ? 0.7 + (i / history.length) * 0.3 : 0.2,
               transition: "height 0.3s ease",
               cursor: "pointer",
@@ -79,8 +79,8 @@ function StatusBadge({ status }: { status: Status }) {
 
 function SiteCard({ site }: { site: Site }) {
   const historicalLogs = site.history.filter(s => s !== null);
-  const uptimePercent = historicalLogs.length > 0 
-    ? (historicalLogs.filter(s => s === "online" || s === "degraded").length / historicalLogs.length) * 100 
+  const uptimePercent = historicalLogs.length > 0
+    ? (historicalLogs.filter(s => s === "online" || s === "degraded").length / historicalLogs.length) * 100
     : 100;
 
   return (
@@ -135,7 +135,7 @@ function SiteCard({ site }: { site: Site }) {
 }
 
 export default function Home() {
-  const [sites, setSites] = useState<Site[]>(() => 
+  const [sites, setSites] = useState<Site[]>(() =>
     SITES_CONFIG.map(s => ({ ...s, history: Array(90).fill(null), current: null }))
   );
   const [checking, setChecking] = useState(true);
@@ -147,7 +147,7 @@ export default function Home() {
     try {
       const res = await fetch("/api/status", { cache: "no-store" });
       const data = await res.json();
-      
+
       if (data.success) {
         const mergedSites = SITES_CONFIG.map(config => {
           const dbMatch = data.systems.find((sys: any) => sys.id === config.id);
@@ -159,12 +159,12 @@ export default function Home() {
         });
 
         setSites(mergedSites);
-        
+
         const statuses = data.systems.map((sys: any) => sys.current?.status).filter(Boolean);
-        if (statuses.every(s => s === "online")) setOverallStatus("online");
-        else if (statuses.some(s => s === "offline")) setOverallStatus("offline");
+        if (statuses.every((s: Status) => s === "online")) setOverallStatus("online");
+        else if (statuses.some((s: Status) => s === "offline")) setOverallStatus("offline");
         else setOverallStatus("degraded");
-        
+
         setLastUpdated(new Date());
       }
     } catch (err) {
