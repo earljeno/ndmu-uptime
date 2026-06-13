@@ -21,9 +21,9 @@ interface Site {
 }
 
 const SITES_CONFIG = [
-  { id: "main", name: "University Website", url: "https://ndmu.edu.ph", description: "Official NDMU university portal", category: "Main" },
+  { id: "main", name: "University Website", url: "https://ndmu.edu.ph", description: "Official NDMU university website", category: "Main" },
   { id: "sms", name: "School Management System", url: "https://sms.ndmu.edu.ph", description: "Student enrollment & academic portal", category: "Academic" },
-  { id: "satp", name: "Student Portal (SATP)", url: "https://satp.ndmu.edu.ph", description: "Student academic tracking portal", category: "Academic" },
+  { id: "satp", name: "Student Portal (SATP)", url: "https://satp.ndmu.edu.ph", description: "Student assessment of teachers performance", category: "Academic" },
   { id: "alumni", name: "Alumni Portal", url: "https://alumni.ndmu.edu.ph", description: "NDMU alumni network & directory", category: "Community" },
 ];
 
@@ -235,7 +235,7 @@ export default function Home() {
           <div>
             <p style={{ fontSize: "12px", color: "var(--yellow)", fontWeight: 600, marginBottom: "4px", fontFamily: "'JetBrains Mono', monospace" }}>Unofficial Monitor</p>
             <p style={{ fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.6 }}>
-              This tool operates independently of Notre Dame of Marbel University.
+              This website is an independent project and is not affiliated with, endorsed by, or operated by Notre Dame of Marbel University. Availability data is collected from publicly accessible services and may not reflect the university&apos;s official system status.
             </p>
           </div>
         </div>
