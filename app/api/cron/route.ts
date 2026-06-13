@@ -33,7 +33,7 @@ export async function GET(request: Request) {
           signal: controller.signal,
           cache: 'no-store',
           // Use a custom User-Agent so the university servers don't block an unknown generic fetch
-          headers: { 'User-Agent': 'NDMU-Unofficial-Status-Monitor/1.0' }
+          headers: { 'User-Agent': 'NDMU-Unofficial-Status-Monitor/1.0 (Contact: ejmgarcia@ndmu.edu.ph)' }
         });
         
         clearTimeout(timeout);
