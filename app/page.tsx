@@ -1,13 +1,19 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { Activity, RefreshCw, AlertTriangle, CheckCircle2, XCircle, Clock, ExternalLink, Info } from "lucide-react";
+import { Activity, RefreshCw, AlertTriangle, CheckCircle2, XCircle, HelpCircle, Clock, ExternalLink, Info } from "lucide-react";
 
 type Status = "online" | "offline" | "degraded" | "checking";
 
 interface CheckResult {
   status: Status;
   latency: number | null;
+  timestamp: string;
   checkedAt: Date;
+}
+
+interface HistoryLog {
+  status: Status;
+  timestamp: string;
 }
 
 interface Site {
@@ -16,46 +22,93 @@ interface Site {
   url: string;
   description: string;
   category: string;
-  history: (Status | null)[];
+  history: (HistoryLog | null)[];
   current: CheckResult | null;
+  uptime30Day: number | null; // Added for the 30-day true metric
 }
 
 const SITES_CONFIG = [
   { id: "main", name: "University Website", url: "https://ndmu.edu.ph", description: "Official NDMU university website", category: "Main" },
   { id: "sms", name: "School Management System", url: "https://sms.ndmu.edu.ph", description: "Student enrollment & academic portal", category: "Academic" },
-  { id: "satp", name: "Student Portal (SATP)", url: "https://satp.ndmu.edu.ph", description: "Student assessment of teachers performance", category: "Academic" },
+  { id: "satp", name: "SATP Portal", url: "https://satp.ndmu.edu.ph", description: "Student Assessment of Teacher Performance", category: "Evaluation" },
   { id: "alumni", name: "Alumni Portal", url: "https://alumni.ndmu.edu.ph", description: "NDMU alumni network & directory", category: "Community" },
 ];
 
-function UptimeBar({ history }: { history: (Status | null)[] }) {
+function UptimeBar({ history }: { history: (HistoryLog | null)[] }) {
   return (
-    <div className="uptime-bar-container w-full overflow-hidden">
-      {/* Increased height from h-7 to h-8 and gap slightly on desktop */}
-      <div className="flex gap-[2px] sm:gap-[3px] items-end h-8 w-full">
-        {history.map((s, i) => {
-          // Identify the oldest 45 days. We will hide these on mobile.
-          const isOldOnMobile = i < 45; 
-          
+    <div className="uptime-bar-container" style={{ width: "100%", overflow: "visible", position: "relative" }}>
+      <div style={{ display: "flex", gap: "2px", alignItems: "flex-end", height: "28px", width: "100%" }}>
+        {history.map((log, i) => {
+          const isOldOnMobile = i < 45;
+          const s = log?.status || null;
+
+          const barTime = log?.timestamp ? new Date(log.timestamp) : null;
+          const dateStr = barTime
+            ? barTime.toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' })
+            : "No data available";
+
+          const timeStr = barTime
+            ? barTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+            : "";
+
+          const tooltipConfig = {
+            online: { text: "No incidents", color: "var(--green)", Icon: CheckCircle2 },
+            degraded: { text: "Degraded performance", color: "var(--yellow)", Icon: AlertTriangle },
+            offline: { text: "System outage", color: "var(--red)", Icon: XCircle },
+            checking: { text: "Running checks...", color: "var(--text-muted)", Icon: Activity }, /* <-- Added this line */
+            null: { text: "No data", color: "var(--text-muted)", Icon: HelpCircle },
+          }[s || "null"];
+
+          // --- SMART ALIGNMENT LOGIC ---
+          // Determine if the bar is too close to the left or right edge
+          const isRightEdge = i >= history.length - 15;
+          const isLeftEdge = i < 15;
+
+          let alignmentClasses = "left-1/2 -translate-x-1/2"; // Default Center
+          if (isRightEdge) alignmentClasses = "right-0"; // Anchor to right edge
+          if (isLeftEdge) alignmentClasses = "left-0"; // Anchor to left edge
+
           return (
             <div
               key={i}
-              title={s ?? "no data"}
-              // Tailwind classes: hidden on mobile, block on sm (desktop) and above
-              className={`${isOldOnMobile ? "hidden sm:block" : "block"} rounded-[1px] sm:rounded-sm`}
+              className={`group relative ${isOldOnMobile ? "hidden sm:block" : "block"}`}
               style={{
                 flex: 1,
-                minWidth: "3px", // Forces the bars to be thicker
+                minWidth: "2px",
                 height: s === "online" ? "100%" : s === "degraded" ? "60%" : s === "offline" ? "40%" : "20%",
-                backgroundColor:
-                  s === "online" ? "var(--green)" :
-                  s === "degraded" ? "var(--yellow)" :
-                  s === "offline" ? "var(--red)" :
-                  "var(--border-bright)",
+                borderRadius: "2px",
+                backgroundColor: s ? tooltipConfig.color : "var(--border-bright)",
                 opacity: s ? 0.7 + (i / history.length) * 0.3 : 0.2,
-                transition: "height 0.3s ease",
+                transition: "height 0.3s ease, opacity 0.2s ease",
                 cursor: "pointer",
               }}
-            />
+            >
+              {/* Tooltip with dynamic alignment */}
+              <div
+                className={`pointer-events-none absolute bottom-full mb-2 w-max opacity-0 transition-opacity duration-200 group-hover:opacity-100 ${alignmentClasses}`}
+                style={{ zIndex: 50 }}
+              >
+                <div
+                  className="flex flex-col items-start rounded-md shadow-xl border text-left"
+                  style={{
+                    background: "var(--bg-card)",
+                    borderColor: "var(--border)",
+                    minWidth: "150px",
+                    padding: "12px 16px"
+                  }}
+                >
+                  <span style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "6px" }}>
+                    {dateStr} {timeStr && <span style={{ fontSize: "11px", opacity: 0.7 }}>• {timeStr}</span>}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <tooltipConfig.Icon size={14} color={tooltipConfig.color} />
+                    <span style={{ fontSize: "13px", color: tooltipConfig.color, fontWeight: 500 }}>
+                      {tooltipConfig.text}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
           );
         })}
       </div>
@@ -86,10 +139,11 @@ function StatusBadge({ status }: { status: Status }) {
 }
 
 function SiteCard({ site }: { site: Site }) {
-  const historicalLogs = site.history.filter(s => s !== null);
-  const uptimePercent = historicalLogs.length > 0
-    ? (historicalLogs.filter(s => s === "online" || s === "degraded").length / historicalLogs.length) * 100
-    : 100;
+  // Use the true 30-day database metric instead of the 7-hour visual bars calculation
+  const displayUptime = site.uptime30Day !== null ? `${site.uptime30Day}%` : "—";
+  const uptimeColor = site.uptime30Day !== null
+    ? (site.uptime30Day > 98 ? "var(--green)" : site.uptime30Day > 90 ? "var(--yellow)" : "var(--red)")
+    : "var(--text-muted)";
 
   return (
     <article style={{
@@ -121,7 +175,7 @@ function SiteCard({ site }: { site: Site }) {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px", marginBottom: "20px" }}>
         {[
           { label: "Latency", value: site.current?.latency != null ? `${site.current.latency}ms` : "—", color: site.current?.latency != null ? (site.current.latency < 500 ? "var(--green)" : site.current.latency < 2000 ? "var(--yellow)" : "var(--red)") : "var(--text-muted)" },
-          { label: "Uptime Metric", value: historicalLogs.length > 0 ? `${uptimePercent.toFixed(1)}%` : "—", color: uptimePercent > 98 ? "var(--green)" : uptimePercent > 90 ? "var(--yellow)" : "var(--red)" },
+          { label: "30-Day Uptime", value: displayUptime, color: uptimeColor },
           { label: "Last Sync", value: site.current?.checkedAt ? new Date(site.current.checkedAt).toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" }) : "—", color: "var(--text-muted)" },
         ].map(m => (
           <div key={m.label} style={{ background: "rgba(255,255,255,0.02)", borderRadius: "6px", padding: "10px 12px", border: "1px solid var(--border)" }}>
@@ -133,8 +187,8 @@ function SiteCard({ site }: { site: Site }) {
 
       <div>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-          <span style={{ fontSize: "10px", color: "var(--text-dim)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em", textTransform: "uppercase" }}>Database History</span>
-          <span style={{ fontSize: "10px", color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace" }}>live status →</span>
+          <span style={{ fontSize: "10px", color: "var(--text-dim)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em", textTransform: "uppercase" }}>Recent Activity (Last 7.5 Hrs)</span>
+          <span style={{ fontSize: "10px", color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace" }}>now →</span>
         </div>
         <UptimeBar history={site.history} />
       </div>
@@ -144,7 +198,7 @@ function SiteCard({ site }: { site: Site }) {
 
 export default function Home() {
   const [sites, setSites] = useState<Site[]>(() =>
-    SITES_CONFIG.map(s => ({ ...s, history: Array(90).fill(null), current: null }))
+    SITES_CONFIG.map(s => ({ ...s, history: Array(90).fill(null), current: null, uptime30Day: null }))
   );
   const [checking, setChecking] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -162,16 +216,19 @@ export default function Home() {
           return {
             ...config,
             current: dbMatch?.current || null,
-            history: dbMatch?.history || Array(90).fill(null)
+            history: dbMatch?.history || Array(90).fill(null),
+            uptime30Day: dbMatch?.uptime30Day ?? null
           };
         });
 
         setSites(mergedSites);
 
         const statuses = data.systems.map((sys: any) => sys.current?.status).filter(Boolean);
-        if (statuses.every((s: Status) => s === "online")) setOverallStatus("online");
-        else if (statuses.some((s: Status) => s === "offline")) setOverallStatus("offline");
-        else setOverallStatus("degraded");
+        if (statuses.length > 0) {
+          if (statuses.every((s: Status) => s === "online")) setOverallStatus("online");
+          else if (statuses.some((s: Status) => s === "offline")) setOverallStatus("offline");
+          else setOverallStatus("degraded");
+        }
 
         setLastUpdated(new Date());
       }
@@ -210,7 +267,7 @@ export default function Home() {
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           {lastUpdated && (
             <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace" }}>
-              <Clock size={11} /> Sync: {lastUpdated.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+              <Clock size={11} /> Sync: {lastUpdated.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" })}
             </div>
           )}
           <button onClick={fetchDatabaseStatus} disabled={checking} style={{ display: "flex", alignItems: "center", gap: "6px", background: "var(--bg-card)", border: "1px solid var(--border)", color: checking ? "var(--text-muted)" : "var(--text)", padding: "7px 14px", borderRadius: "6px", cursor: checking ? "not-allowed" : "pointer", fontSize: "12px", fontFamily: "'JetBrains Mono', monospace" }}>
@@ -246,6 +303,16 @@ export default function Home() {
               This website is an independent project and is not affiliated with, endorsed by, or operated by Notre Dame of Marbel University. Availability data is collected from publicly accessible services and may not reflect the university&apos;s official system status.
             </p>
           </div>
+        </div>
+
+        {/* Added Footer Structure */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "20px", borderTop: "1px solid var(--border)" }}>
+          <span style={{ fontSize: "11px", color: "var(--text-dim)", fontFamily: "'JetBrains Mono', monospace" }}>
+            NDMU Systems Status · Unofficial
+          </span>
+          <span style={{ fontSize: "11px", color: "var(--text-dim)", fontFamily: "'JetBrains Mono', monospace" }}>
+            Notre Dame of Marbel University · Koronadal City
+          </span>
         </div>
       </footer>
     </main>

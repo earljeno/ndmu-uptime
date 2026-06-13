@@ -8,30 +8,47 @@ const supabase = createClient(
 
 export async function GET() {
   try {
-    // Fetch the last 360 logs total (90 historical entries * 4 sites)
-    const { data: logs, error } = await supabase
+    // 1. Fetch the last 90 records per site for the real-time visual bars
+    const { data: recentLogs, error: recentError } = await supabase
       .from('uptime_logs')
       .select('site_id, status, latency, created_at')
       .order('created_at', { ascending: false })
       .limit(360);
 
-    if (error) throw error;
+    if (recentError) throw recentError;
+
+    // 2. Fetch the last 30 days of status data for the long-term percentage
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const { data: monthLogs, error: monthError } = await supabase
+      .from('uptime_logs')
+      .select('site_id, status')
+      .gte('created_at', thirtyDaysAgo.toISOString());
+
+    if (monthError) throw monthError;
 
     const siteIds = ["main", "sms", "satp", "alumni"];
     
     const formattedData = siteIds.map((id) => {
-      // Filter logs specific to this site
-      const siteLogs = logs ? logs.filter((log) => log.site_id === id) : [];
-      
-      // The newest entry represents the current real-time state
-      const latestLog = siteLogs[0];
-      
-      // Map out the history array (reversing so oldest is index 0, newest is on the right)
-      const history = siteLogs.map((log) => log.status).reverse();
-      
-      // If history has fewer than 90 logs, pad the beginning with null (no data)
+      // Process the 90-bar history
+      const siteRecentLogs = recentLogs ? recentLogs.filter((log) => log.site_id === id) : [];
+      const latestLog = siteRecentLogs[0];
+      const history: Array<{ status: any; timestamp: any } | null> = siteRecentLogs.map((log) => ({
+        status: log.status,
+        timestamp: log.created_at
+      })).reverse();
+
       while (history.length < 90) {
         history.unshift(null);
+      }
+      // Process the 30-day uptime percentage
+      const siteMonthLogs = monthLogs ? monthLogs.filter(log => log.site_id === id) : [];
+      let uptime30Day = 100.00;
+      
+      if (siteMonthLogs.length > 0) {
+        const operationalCount = siteMonthLogs.filter(log => log.status === 'online' || log.status === 'degraded').length;
+        uptime30Day = (operationalCount / siteMonthLogs.length) * 100;
       }
 
       return {
@@ -41,7 +58,8 @@ export async function GET() {
           latency: latestLog.latency,
           checkedAt: new Date(latestLog.created_at)
         } : null,
-        history: history.slice(-90) // Ensure exactly 90 elements
+        history: history.slice(-90),
+        uptime30Day: parseFloat(uptime30Day.toFixed(2)) // Round to 2 decimal places
       };
     });
 
