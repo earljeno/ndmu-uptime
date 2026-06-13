@@ -55,9 +55,9 @@ function UptimeBar({ history }: { history: (HistoryLog | null)[] }) {
             online: { text: "No incidents", color: "var(--green)", Icon: CheckCircle2 },
             degraded: { text: "Degraded performance", color: "var(--yellow)", Icon: AlertTriangle },
             offline: { text: "System outage", color: "var(--red)", Icon: XCircle },
-            checking: { text: "Running checks...", color: "var(--text-muted)", Icon: Activity }, /* <-- Added this line */
+            checking: { text: "Running checks...", color: "var(--text-muted)", Icon: Activity },
             null: { text: "No data", color: "var(--text-muted)", Icon: HelpCircle },
-          }[s || "null"];
+          }[s || "null"] || { text: "Unknown status", color: "var(--text-muted)", Icon: HelpCircle };
 
           // --- SMART ALIGNMENT LOGIC ---
           // Determine if the bar is too close to the left or right edge
@@ -77,13 +77,14 @@ function UptimeBar({ history }: { history: (HistoryLog | null)[] }) {
                 minWidth: "2px",
                 height: s === "online" ? "100%" : s === "degraded" ? "60%" : s === "offline" ? "40%" : "20%",
                 borderRadius: "2px",
-                backgroundColor: s ? tooltipConfig.color : "var(--border-bright)",
+                // FIXED LINE 80: Added an optional chain (?.) and fallback string
+                backgroundColor: s ? (tooltipConfig?.color || "var(--border-bright)") : "var(--border-bright)",
                 opacity: s ? 0.7 + (i / history.length) * 0.3 : 0.2,
                 transition: "height 0.3s ease, opacity 0.2s ease",
                 cursor: "pointer",
               }}
             >
-              {/* Tooltip with dynamic alignment */}
+              {/* Tooltip Wrapper */}
               <div
                 className={`pointer-events-none absolute bottom-full mb-2 w-max opacity-0 transition-opacity duration-200 group-hover:opacity-100 ${alignmentClasses}`}
                 style={{ zIndex: 50 }}
@@ -101,9 +102,10 @@ function UptimeBar({ history }: { history: (HistoryLog | null)[] }) {
                     {dateStr} {timeStr && <span style={{ fontSize: "11px", opacity: 0.7 }}>• {timeStr}</span>}
                   </span>
                   <div className="flex items-center gap-2">
-                    <tooltipConfig.Icon size={14} color={tooltipConfig.color} />
-                    <span style={{ fontSize: "13px", color: tooltipConfig.color, fontWeight: 500 }}>
-                      {tooltipConfig.text}
+                    {/* FIXED: Added optional chain protection here too */}
+                    {tooltipConfig?.Icon && <tooltipConfig.Icon size={14} color={tooltipConfig.color} />}
+                    <span style={{ fontSize: "13px", color: tooltipConfig?.color || "var(--text-muted)", fontWeight: 500 }}>
+                      {tooltipConfig?.text || "Unknown Status"}
                     </span>
                   </div>
                 </div>
