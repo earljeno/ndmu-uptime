@@ -247,6 +247,18 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [fetchDatabaseStatus]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "F5") {
+        e.preventDefault(); // Stops the browser from hard-refreshing
+        fetchDatabaseStatus(); // Fires your smooth data sync instead
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [fetchDatabaseStatus]);
+
   const overallConfig = {
     online: { label: "All Systems Operational", color: "var(--green)", Icon: CheckCircle2 },
     degraded: { label: "Partial Operational Interruption", color: "var(--yellow)", Icon: AlertTriangle },
