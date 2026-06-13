@@ -29,27 +29,35 @@ const SITES_CONFIG = [
 
 function UptimeBar({ history }: { history: (Status | null)[] }) {
   return (
-    <div className="uptime-bar-container">
-      <div style={{ display: "flex", gap: "2px", alignItems: "flex-end", height: "28px" }}>
-        {history.map((s, i) => (
-          <div
-            key={i}
-            title={s ?? "no data"}
-            style={{
-              flex: 1,
-              height: s === "online" ? "100%" : s === "degraded" ? "60%" : s === "offline" ? "40%" : "20%",
-              borderRadius: "2px",
-              backgroundColor:
-                s === "online" ? "var(--green)" :
+    <div className="uptime-bar-container w-full overflow-hidden">
+      {/* Increased height from h-7 to h-8 and gap slightly on desktop */}
+      <div className="flex gap-[2px] sm:gap-[3px] items-end h-8 w-full">
+        {history.map((s, i) => {
+          // Identify the oldest 45 days. We will hide these on mobile.
+          const isOldOnMobile = i < 45; 
+          
+          return (
+            <div
+              key={i}
+              title={s ?? "no data"}
+              // Tailwind classes: hidden on mobile, block on sm (desktop) and above
+              className={`${isOldOnMobile ? "hidden sm:block" : "block"} rounded-[1px] sm:rounded-sm`}
+              style={{
+                flex: 1,
+                minWidth: "3px", // Forces the bars to be thicker
+                height: s === "online" ? "100%" : s === "degraded" ? "60%" : s === "offline" ? "40%" : "20%",
+                backgroundColor:
+                  s === "online" ? "var(--green)" :
                   s === "degraded" ? "var(--yellow)" :
-                    s === "offline" ? "var(--red)" :
-                      "var(--border-bright)",
-              opacity: s ? 0.7 + (i / history.length) * 0.3 : 0.2,
-              transition: "height 0.3s ease",
-              cursor: "pointer",
-            }}
-          />
-        ))}
+                  s === "offline" ? "var(--red)" :
+                  "var(--border-bright)",
+                opacity: s ? 0.7 + (i / history.length) * 0.3 : 0.2,
+                transition: "height 0.3s ease",
+                cursor: "pointer",
+              }}
+            />
+          );
+        })}
       </div>
     </div>
   );
