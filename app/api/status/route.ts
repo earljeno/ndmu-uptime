@@ -8,7 +8,6 @@ const supabase = createClient(
 
 export async function GET() {
   try {
-    // 1. Fetch the last 90 records per site for the real-time visual bars
     const { data: recentLogs, error: recentError } = await supabase
       .from('uptime_logs')
       .select('site_id, status, latency, created_at')
@@ -17,21 +16,14 @@ export async function GET() {
 
     if (recentError) throw recentError;
 
-    // 2. Fetch the last 30 days of status data for the long-term percentage
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const { data: monthLogs, error: monthError } = await supabase
-      .from('uptime_logs')
-      .select('site_id, status')
-      .gte('created_at', thirtyDaysAgo.toISOString());
-
-    if (monthError) throw monthError;
+    const thirtyDaysIso = thirtyDaysAgo.toISOString();
 
     const siteIds = ["main", "sms", "satp", "alumni"];
     
-    const formattedData = siteIds.map((id) => {
-      // Process the 90-bar history
+    const formattedData = await Promise.all(siteIds.map(async (id) => {
+      
       const siteRecentLogs = recentLogs ? recentLogs.filter((log) => log.site_id === id) : [];
       const latestLog = siteRecentLogs[0];
       const history: Array<{ status: any; timestamp: any } | null> = siteRecentLogs.map((log) => ({
@@ -43,17 +35,23 @@ export async function GET() {
         history.unshift(null);
       }
       
-      // Process the 30-day uptime percentage
-      const siteMonthLogs = monthLogs ? monthLogs.filter(log => log.site_id === id) : [];
+      const { count: totalCount } = await supabase
+        .from('uptime_logs')
+        .select('*', { count: 'exact', head: true })
+        .eq('site_id', id)
+        .gte('created_at', thirtyDaysIso);
+
+      const { count: upCount } = await supabase
+        .from('uptime_logs')
+        .select('*', { count: 'exact', head: true })
+        .eq('site_id', id)
+        .or('status.ilike.online,status.ilike.degraded')
+        .gte('created_at', thirtyDaysIso);
+
       let uptime30Day = 100.00;
       
-      if (siteMonthLogs.length > 0) {
-        const operationalCount = siteMonthLogs.filter(log => {
-          const cleanStatus = (log.status || "").toLowerCase().trim();
-          return cleanStatus === 'online' || cleanStatus === 'degraded';
-        }).length;
-        
-        uptime30Day = (operationalCount / siteMonthLogs.length) * 100;
+      if (totalCount !== null && totalCount > 0) {
+        uptime30Day = ((upCount || 0) / totalCount) * 100;
       }
 
       return {
@@ -64,9 +62,9 @@ export async function GET() {
           checkedAt: new Date(latestLog.created_at)
         } : null,
         history: history.slice(-90),
-        uptime30Day: parseFloat(uptime30Day.toFixed(2)) // Round to 2 decimal places
+        uptime30Day: parseFloat(uptime30Day.toFixed(2)) 
       };
-    });
+    }));
 
     return NextResponse.json({ success: true, systems: formattedData });
   } catch (error: any) {
