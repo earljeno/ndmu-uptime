@@ -42,12 +42,17 @@ export async function GET() {
       while (history.length < 90) {
         history.unshift(null);
       }
+      
       // Process the 30-day uptime percentage
       const siteMonthLogs = monthLogs ? monthLogs.filter(log => log.site_id === id) : [];
       let uptime30Day = 100.00;
       
       if (siteMonthLogs.length > 0) {
-        const operationalCount = siteMonthLogs.filter(log => log.status === 'online' || log.status === 'degraded').length;
+        const operationalCount = siteMonthLogs.filter(log => {
+          const cleanStatus = (log.status || "").toLowerCase().trim();
+          return cleanStatus === 'online' || cleanStatus === 'degraded';
+        }).length;
+        
         uptime30Day = (operationalCount / siteMonthLogs.length) * 100;
       }
 
